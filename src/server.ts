@@ -1,66 +1,85 @@
-import {
-  AngularNodeAppEngine,
-  createNodeRequestHandler,
-  isMainModule,
-  writeResponseToNodeResponse,
-} from '@angular/ssr/node';
 import express from 'express';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import cors from 'cors';
+import { pool } from './database/db';
 
-const serverDistFolder = dirname(fileURLToPath(import.meta.url));
-const browserDistFolder = resolve(serverDistFolder, '../browser');
 
+// 1. ตั้งค่าให้ DNS เลือกใช้ IPv4 ก่อนเสมอ (ป้องกัน IPv6 ENETUNREACH)
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+// เก็บ OTP ชั่วคราว (ในระบบจริงควรใช้ Redis หรือ Database)
+const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
-/**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/**', (req, res) => {
- *   // Handle API request
- * });
- * ```
- */
+app.use(cors({
+  origin: [
+    'http://localhost:4200',
+    'http://cardunknow.netlify.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+  credentials: true
+}));
 
-/**
- * Serve static files from /browser
- */
-app.use(
-  express.static(browserDistFolder, {
-    maxAge: '1y',
-    index: false,
-    redirect: false,
-  }),
-);
-
-/**
- * Handle all other requests by rendering the Angular application.
- */
-app.use('/**', (req, res, next) => {
-  angularApp
-    .handle(req)
-    .then((response) =>
-      response ? writeResponseToNodeResponse(response, res) : next(),
-    )
-    .catch(next);
+app.use(express.json());
+app.get('/', (req, res) => {
+  res.send('Todo API Running');
 });
 
-/**
- * Start the server if this module is the main entry point.
- * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
- */
-if (isMainModule(import.meta.url)) {
-  const port = process.env['PORT'] || 4000;
-  app.listen(port, () => {
-    console.log(`Node Express server listening on http://localhost:${port}`);
-  });
-}
 
-/**
- * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
- */
-export const reqHandler = createNodeRequestHandler(app);
+app.get('/natarida', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM natarida ORDER BY id DESC'
+    );
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(error);
+  }
+});
+
+app.post('/natarida', async (req, res) => {
+  try {
+    const { color_wear, resturant } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO natarida (color_wear, resturant)
+       VALUES ($1, $2)
+       RETURNING *`,
+      [color_wear, resturant]
+    );
+
+    res.status(201).json(result.rows[0]);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+app.put('/natarida/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { color_wear, resturant } = req.body;
+
+    const result = await pool.query(
+      `UPDATE natarida
+       SET color_wear = $1,
+           resturant = $2
+       WHERE id = $3
+       RETURNING *`,
+      [color_wear, resturant, id]
+    );
+
+    res.json(result.rows[0]);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
