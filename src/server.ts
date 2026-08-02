@@ -27,18 +27,27 @@ app.get('/', (req, res) => {
 
 app.get('/natarida', async (req, res) => {
   try {
+
     const result = await pool.query(
-      'SELECT * FROM natarida ORDER BY id DESC'
+      `
+      SELECT * 
+      FROM natarida
+      ORDER BY created_at DESC
+      `
     );
+
 
     res.json(result.rows);
 
+
   } catch (error) {
+
     console.error(error);
+
     res.status(500).json(error);
+
   }
 });
-
 app.post('/natarida', async (req, res) => {
   try {
     const { color_wear, resturant } = req.body;
