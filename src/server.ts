@@ -11,7 +11,8 @@ const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 app.use(cors({
   origin: [
     'http://localhost:4200',
-    'https://cardunknow.netlify.app'
+    'https://cardunknow.netlify.app',
+    'https://for-vip-tonight-date.netlify.app'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
