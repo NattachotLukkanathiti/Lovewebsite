@@ -56,25 +56,37 @@ app.post('/natarida', async (req, res) => {
     res.status(500).json({ message: 'Server Error' });
   }
 });
+
 app.put('/natarida/:id', async (req, res) => {
   try {
+
     const { id } = req.params;
-    const { color_wear, resturant } = req.body;
+    const { resturant } = req.body;
+
 
     const result = await pool.query(
       `UPDATE natarida
-       SET color_wear = $1,
-           resturant = $2
-       WHERE id = $3
+       SET resturant = $1
+       WHERE id = $2
        RETURNING *`,
-      [color_wear, resturant, id]
+      [
+        resturant,
+        id
+      ]
     );
+
 
     res.json(result.rows[0]);
 
-  } catch (error) {
+
+  } catch(error) {
+
     console.error(error);
-    res.status(500).json({ message: 'Server Error' });
+
+    res.status(500).json({
+      message:'Server Error'
+    });
+
   }
 });
 
